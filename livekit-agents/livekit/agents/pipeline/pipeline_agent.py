@@ -656,21 +656,11 @@ class VoicePipelineAgent(utils.EventEmitter[EventTypes]):
             speech_handle.source.function_calls
         )
 
-        extra_tools_messages = []  # additional messages from the functions to add to the context if needed
-
-        # if the answer is using tools, execute the functions and automatically generate
-        # a response to the user question from the returned values
-        if is_using_tools and not interrupted:
-            assert isinstance(speech_handle.source, LLMStream)
-            assert (
-                not user_question or speech_handle.user_commited
-            ), "user speech should have been committed before using tools"
-
-            # execute functions
-            call_ctx = AgentCallContext(self, speech_handle.source)
+        async def _call_functions(stream: LLMStream) -> Coroutine[None, None, list[ChatMessage]]:
+            call_ctx = AgentCallContext(self, stream)
             tk = _CallContextVar.set(call_ctx)
             self.emit("function_calls_collected", speech_handle.source.function_calls)
-            called_fncs_info = speech_handle.source.function_calls
+            called_fncs_info = stream.function_calls
 
             called_fncs = []
             for fnc in called_fncs_info:
@@ -703,13 +693,31 @@ class VoicePipelineAgent(utils.EventEmitter[EventTypes]):
                 tool_calls_results_msg.append(
                     ChatMessage.create_tool_from_called_function(called_fnc)
                 )
-
+            extra_tools_messages2 = []
             if tool_calls:
-                extra_tools_messages.append(ChatMessage.create_tool_calls(tool_calls))
-                extra_tools_messages.extend(tool_calls_results_msg)
+                extra_tools_messages2.append(ChatMessage.create_tool_calls(tool_calls))
+                extra_tools_messages2.extend(tool_calls_results_msg)
 
-                chat_ctx = speech_handle.source.chat_ctx.copy()
-                chat_ctx.messages.extend(extra_tools_messages)
+            return extra_tools_messages2
+            
+        extra_tools_messages = []  # additional messages from the functions to add to the context if needed
+
+        # if the answer is using tools, execute the functions and automatically generate
+        # a response to the user question from the returned values
+        if is_using_tools and not interrupted:
+            assert isinstance(speech_handle.source, LLMStream)
+            assert (
+                not user_question or speech_handle.user_commited
+            ), "user speech should have been committed before using tools"
+
+            # execute functions
+            answer_llm_stream = speech_handle.source
+            chat_ctx = speech_handle.source.chat_ctx.copy()
+            collected_text = ""
+            while answer_llm_stream.function_calls:
+                new_func_call_msgs = await _call_functions(answer_llm_stream)
+                extra_tools_messages.extend(new_func_call_msgs)
+                chat_ctx.messages.extend(new_func_call_msgs)
 
                 answer_llm_stream = self._llm.chat(
                     chat_ctx=chat_ctx,
@@ -723,7 +731,7 @@ class VoicePipelineAgent(utils.EventEmitter[EventTypes]):
                 play_handle = answer_synthesis.play()
                 await play_handle.join()
 
-                collected_text = answer_synthesis.tts_forwarder.played_text
+                collected_text += answer_synthesis.tts_forwarder.played_text
                 interrupted = answer_synthesis.interrupted
 
         if speech_handle.add_to_chat_ctx and (
@@ -733,6 +741,9 @@ class VoicePipelineAgent(utils.EventEmitter[EventTypes]):
 
             if interrupted:
                 collected_text += "..."
+
+            if collected_text == "":
+                    collected_text = "(empty)"
 
             msg = ChatMessage.create(text=collected_text, role="assistant")
             self._chat_ctx.messages.append(msg)
