@@ -29,7 +29,7 @@ setuptools.setup(
     description="LiveKit Python Agents",
     long_description=(here / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
-    url="https://github.com/livekit/agents",
+    url="https://github.com/facere-ai/agents",
     cmdclass={},
     classifiers=[
         "Intended Audience :: Developers",
@@ -70,6 +70,6 @@ setuptools.setup(
     project_urls={
         "Documentation": "https://docs.livekit.io",
         "Website": "https://livekit.io/",
-        "Source": "https://github.com/livekit/agents",
+        "Source": "https://github.com/facere-ai/agents",
     },
 )

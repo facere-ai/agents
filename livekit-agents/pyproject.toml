@@ -1,3 +1,13 @@
+[tool.poetry]
+name = "livekit-agents"
+version = "0.1.1"
+description = ""
+authors = ["rachel <rachel@facere.ai>"]
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.poetry.dependencies]
+python = "3.10.*"
+build = "1.2.2"
