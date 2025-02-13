@@ -26,7 +26,7 @@ with open(os.path.join(here, "livekit", "agents", "version.py"), "r") as f:
 setuptools.setup(
     name="livekit-agents",
     version=about["__version__"],
-    description="LiveKit Python Agents",
+    description="Facere LiveKit Python Agents",
     long_description=(here / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     url="https://github.com/facere-ai/agents",
