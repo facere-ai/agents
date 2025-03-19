@@ -69,6 +69,8 @@ class ContentPart(TypedDict):
 
 class InputAudioTranscription(TypedDict):
     model: InputTranscriptionModel | str
+    language: NotRequired[str]
+    prompt: NotRequired[str]
 
 
 class ServerVad(TypedDict):
@@ -309,7 +311,7 @@ class ClientEvent:
         tool_choice: ToolChoice
         temperature: float
         conversation: Literal["auto", "none"]
-        metadata: NotRequired[map | None]
+        metadata: NotRequired[dict[str, str] | None]
         max_output_tokens: int | Literal["inf"]
 
     class ResponseCreate(TypedDict):
