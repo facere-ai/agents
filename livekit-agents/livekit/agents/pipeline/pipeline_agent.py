@@ -984,9 +984,17 @@ class VoicePipelineAgent(utils.EventEmitter[EventTypes]):
 
             called_fncs = []
             for fnc in new_function_calls:
-                gap_filler_task = asyncio.create_task(
-                    self.say(source="One moment.", allow_interruptions=True, add_to_chat_ctx=False)
-                    )
+                gap_filler_task = None
+                if collected_text == '':
+                    last_msg = self._chat_ctx.messages[-1]
+                    if not (last_msg.role == "assistant" and last_msg.content.endswith("?")):
+                        gap_filler_task = asyncio.create_task(
+                            self.say(source="One moment.", allow_interruptions=True, add_to_chat_ctx=False)
+                        )
+                elif not collected_text.endswith("?"):
+                    gap_filler_task = asyncio.create_task(
+                        self.say(source="One moment.", allow_interruptions=True, add_to_chat_ctx=False)
+                        )
                 called_fnc = fnc.execute()
                 called_fncs.append(called_fnc)
                 logger.debug(
@@ -998,7 +1006,8 @@ class VoicePipelineAgent(utils.EventEmitter[EventTypes]):
                 )
                 try:
                     await called_fnc.task
-                    gap_filler_task.cancel()
+                    if gap_filler_task is not None:
+                        gap_filler_task.cancel()
                 except Exception as e:
                     logger.exception(
                         "error executing ai function",
@@ -1008,6 +1017,8 @@ class VoicePipelineAgent(utils.EventEmitter[EventTypes]):
                         },
                         exc_info=e,
                     )
+
+            gap_filler_task.cancel()
 
             tool_calls_info = []
             tool_calls_results = []
